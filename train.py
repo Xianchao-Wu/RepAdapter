@@ -26,12 +26,16 @@ from torch import nn
 from timm.data import Mixup
 from timm.loss import  SoftTargetCrossEntropy
 
+device='cuda:0'
+
 def train(config, model, dl, opt, scheduler, epoch,mixup_fn=None,criterion=nn.CrossEntropyLoss()):
     model.train()
     model = model.cuda()
+    #model = model.to(device)
     for ep in tqdm(range(epoch)):
         model.train()
         model = model.cuda()
+        #model = model.to(device)
         # pbar = tqdm(dl)
         for i, batch in enumerate(dl):
             x, y = batch[0].cuda(), batch[1].cuda()
@@ -59,6 +63,7 @@ def test(model, dl):
     acc = Accuracy()
     #pbar = tqdm(dl)
     model = model.cuda()
+    #model = model.to(device)
     for batch in dl:  # pbar:
         x, y = batch[0].cuda(), batch[1].cuda()
         out = model(x).data
@@ -68,6 +73,7 @@ def test(model, dl):
 
 
 if __name__ == '__main__':
+    import ipdb; ipdb.set_trace()
     parser = ArgumentParser()
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--lr', type=float, default=1e-3)
@@ -99,13 +105,17 @@ if __name__ == '__main__':
         model = create_model(args.model, drop_path_rate=0.1,pretrained=True)
     else:
         assert NotImplementedError
-
+    
+    import ipdb; ipdb.set_trace()
     model.cuda()
+    #model.to(device)
     throughput(model)
     train_dl, test_dl = get_data(args.dataset,few_shot=args.few_shot)
 
+    import ipdb; ipdb.set_trace()
     set_RepAdapter(model, args.method, dim=args.dim, s=config['scale'] if args.scale==0 else args.scale, args=args)
     model.cuda()
+    #model.to(device)
     throughput(model)
 
     if hasattr(model,'blocks'):

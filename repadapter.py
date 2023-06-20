@@ -221,7 +221,7 @@ def sparse2dense(weight,groups):
 
 
 def set_RepAdapter(model, method, dim=8, s=1, args=None,set_forward=True):
-
+    import ipdb; ipdb.set_trace()
     if method == 'repblock':
         for _ in model.children():
             if type(_) == timm.models.vision_transformer.Block:
