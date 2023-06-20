@@ -38,17 +38,17 @@ def train(config, model, dl, opt, scheduler, epoch,mixup_fn=None,criterion=nn.Cr
         #model = model.to(device)
         # pbar = tqdm(dl)
         for i, batch in enumerate(dl):
-            x, y = batch[0].cuda(), batch[1].cuda()
+            x, y = batch[0].cuda(), batch[1].cuda() # batch[0].shape=[64, 3, 224, 224]; batch[1].shape=[64]
             if mixup_fn is not None:
                 x,y=mixup_fn(x,y)
-            out = model(x)
-            loss = criterion(out, y)
+            out = model(x) # out.shape=[64, 100]
+            loss = criterion(out, y) # CrossEntropyLoss(); y=tensor([98, 69, 50, 65, 36, 80, 60,  1, 83, 11, 70, 83, 24, 68, 86, 17,  3, 26, ...]
             opt.zero_grad()
             loss.backward()
             opt.step()
         if scheduler is not None:
             scheduler.step(ep)
-        if ep % 10 == 9:
+        if True or ep % 10 == 9:
             acc = test(model, test_dl)
             if acc > config['best_acc']:
                 config['best_acc'] = acc
@@ -60,16 +60,25 @@ def train(config, model, dl, opt, scheduler, epoch,mixup_fn=None,criterion=nn.Cr
 @torch.no_grad()
 def test(model, dl):
     model.eval()
-    acc = Accuracy()
+    #acc = Accuracy()
+    correct, total = 0, 0
     #pbar = tqdm(dl)
     model = model.cuda()
     #model = model.to(device)
-    for batch in dl:  # pbar:
-        x, y = batch[0].cuda(), batch[1].cuda()
-        out = model(x).data
-        acc.update(out.argmax(dim=1).view(-1), y, 0)
+    #import ipdb; ipdb.set_trace()
 
-    return acc.result()[0]
+    for batch in dl:  # pbar:
+        x, y = batch[0].cuda(), batch[1].cuda() # torch.Size([256, 3, 224, 224]); torch.Size([256])
+        out = model(x).data
+        #acc.update(out.argmax(dim=1).view(-1), y, 0)
+        correct += sum(out.argmax(dim=1).view(-1) == y)
+        total += len(y)
+
+    #import ipdb; ipdb.set_trace()
+    #return acc.result()[0]
+    ratio = correct.item()/total
+    print(ratio)
+    return ratio
 
 
 if __name__ == '__main__':
@@ -127,6 +136,7 @@ if __name__ == '__main__':
     else:
         assert NotImplementedError
 
+    import ipdb; ipdb.set_trace()
     trainable = []
     model.reset_classifier(config['class_num'])
     
@@ -139,11 +149,11 @@ if __name__ == '__main__':
             total+=p.nelement()
         else:
             p.requires_grad = False
-    print('  + Number of trainable params: %.2fK' % (total / 1e3))  # 每一百万为一个单位
+    print('  + Number of trainable params: %.2fK' % (total / 1e3))  # 每一百万为一个单位 316708/86115364=0.003677717718292406=0.368%, 可训练参数
     opt = AdamW(trainable, lr=args.lr, weight_decay=args.wd)
     scheduler = CosineLRScheduler(opt, t_initial=100,
                                   warmup_t=10, lr_min=1e-5, warmup_lr_init=1e-6, cycle_decay=0.1)
-    if args.few_shot:
+    if args.few_shot: # None
         mixup_fn=Mixup(
             mixup_alpha=0.8, cutmix_alpha=1.0, cutmix_minmax=None,
             prob=1.0, switch_prob=0.5, mode='batch',
@@ -152,5 +162,8 @@ if __name__ == '__main__':
     else:
         mixup_fn=None
         criterion = torch.nn.CrossEntropyLoss()
+
+    import ipdb; ipdb.set_trace()
     model = train(config, model, train_dl, opt, scheduler, epoch=100,mixup_fn=mixup_fn,criterion=criterion)
     print(config['best_acc'])
+
