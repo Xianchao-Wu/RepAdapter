@@ -87,7 +87,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--wd', type=float, default=1e-4)
-    parser.add_argument('--model', type=str, default='vit_base_patch16_224_in21k', choices=['vit_base_patch16_224_in21k','swin_base_patch4_window7_224_in22k','convnext_base_22k_224']) #swin_tiny_patch4_window7_224
+    parser.add_argument('--model', type=str, default='vit_base_patch16_224_in21k', choices=['vit_base_patch16_224_in21k','swin_base_patch4_window7_224_in22k','convnext_base_in22k']) #swin_tiny_patch4_window7_224
     parser.add_argument('--dataset', type=str, default='cifar')
     parser.add_argument('--method', type=str, default='repblock',choices=['repattn','repblock'])
     parser.add_argument('--scale', type=float, default=0)
@@ -109,9 +109,13 @@ if __name__ == '__main__':
     if 'vit' in args.model:
         model = create_model(args.model, drop_path_rate=0.1,checkpoint_path='./ViT-B_16.npz')
     elif 'swin' in args.model:
-        model = create_model(args.model, drop_path_rate=0.1,pretrained=True)
+        #model = create_model(args.model, drop_path_rate=0.1,pretrained=True)
+        model = create_model(args.model, drop_path_rate=0.1,
+                checkpoint_path='./swin_base_patch4_window7_224_22k.pth')
     elif 'conv' in args.model:
-        model = create_model(args.model, drop_path_rate=0.1,pretrained=True)
+        #model = create_model(args.model, drop_path_rate=0.1,pretrained=True)
+        model = create_model(args.model, drop_path_rate=0.1, 
+                checkpoint_path='./convnext_base_22k_224.pth')
     else:
         assert NotImplementedError
     

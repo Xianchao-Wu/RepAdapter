@@ -27,8 +27,8 @@ def forward_vit_block_adapter(self, x):
 
 def forward_vit_attn_adapter(self, x):
     import ipdb; ipdb.set_trace()
-    x = x + self.drop_path1(self.attn(self.adapter_attn(self.norm1(x))))
-    x = x + self.drop_path2(self.mlp(self.norm2(x)))
+    x = x + self.drop_path1(self.attn(self.adapter_attn(self.norm1(x)))) # NOTE only this part changed
+    x = x + self.drop_path2(self.mlp(self.norm2(x))) # keep the same with original model
     return x
 
 def forward_swin_block_adapter(self, x):
@@ -38,7 +38,7 @@ def forward_swin_block_adapter(self, x):
     assert L == H * W, "input feature has wrong size"
 
     shortcut = x
-    x = self.adapter_attn(self.norm1(x))
+    x = self.adapter_attn(self.norm1(x)) # NOTE
     x = x.view(B, H, W, C)
 
     # cyclic shift
@@ -68,7 +68,7 @@ def forward_swin_block_adapter(self, x):
 
     # FFN
     x = shortcut + self.drop_path(x)
-    x = x + self.drop_path(self.mlp(self.adapter_mlp(self.norm2(x))))
+    x = x + self.drop_path(self.mlp(self.adapter_mlp(self.norm2(x)))) # NOTE
     return x
 
 
@@ -79,7 +79,7 @@ def forward_swin_attn_adapter(self, x):
     assert L == H * W, "input feature has wrong size"
 
     shortcut = x
-    x = self.adapter_attn(self.norm1(x))
+    x = self.adapter_attn(self.norm1(x)) # NOTE
     x = x.view(B, H, W, C)
 
     # cyclic shift
@@ -167,10 +167,10 @@ class RepAdapter(nn.Module):
         self.groups=groups # 2
         self.scale=scale # 0.1
 
-        nn.init.xavier_uniform_( self.conv_A.weight) # torch.Size([8, 768, 1])
-        nn.init.zeros_(self.conv_A.bias) # torch.Size([8])
-        nn.init.zeros_(self.conv_B.weight) # torch.Size([768, 4, 1])
-        nn.init.zeros_(self.conv_B.bias) # torch.Size([768])
+        nn.init.xavier_uniform_( self.conv_A.weight) # torch.Size([8, 768, 1]), 认真初始化了
+        nn.init.zeros_(self.conv_A.bias) # torch.Size([8]); 全0
+        nn.init.zeros_(self.conv_B.weight) # torch.Size([768, 4, 1]); 全0
+        nn.init.zeros_(self.conv_B.bias) # torch.Size([768]); 全0
 
     def forward(self, x):
         x=x.transpose(1,2)
@@ -230,7 +230,7 @@ def sparse2dense(weight,groups):
 
 
 def set_RepAdapter(model, method, dim=8, s=1, args=None,set_forward=True):
-    #import ipdb; ipdb.set_trace()
+    #import ipdb; ipdb.set_trace(); dim=rank in LoRA; s=scale for scale-based residual adding
     if method == 'repblock':
         for _ in model.children():
             if type(_) == timm.models.vision_transformer.Block:
@@ -256,7 +256,7 @@ def set_RepAdapter(model, method, dim=8, s=1, args=None,set_forward=True):
             elif len(list(_.children())) != 0:
                 set_RepAdapter(_, method, dim, s,args=args,set_forward=set_forward)
 
-    else:
+    else: # for 'repattn'
         for _ in model.children():
             if type(_) == timm.models.vision_transformer.Block:
                 _.adapter_attn = RepAdapter(hidden_dim=dim,scale=s)
@@ -277,8 +277,8 @@ def set_RepAdapter(model, method, dim=8, s=1, args=None,set_forward=True):
             elif len(list(_.children())) != 0:
                 set_RepAdapter(_, method, dim, s, args=args, set_forward=set_forward)
 
-
 def set_RepWeight(model, method, dim=8, s=1, args=None):
+    import ipdb; ipdb.set_trace()
     if method == 'repblock':
         for _ in model.children():
             if type(_) == timm.models.vision_transformer.Block or type(_) == timm.models.swin_transformer.SwinTransformerBlock:
